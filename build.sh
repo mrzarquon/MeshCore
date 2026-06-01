@@ -65,7 +65,9 @@ case $1 in
 esac
 
 # cache project config json for use in get_platform_for_env()
-PIO_CONFIG_JSON=$(pio project config --json-output)
+# don't use env var, put it in mktemp file
+PIO_CONFIG_JSON=$(mktemp)
+pio project config --json-output > $PIO_CONFIG_JSON
 
 # $1 should be the string to find (case insensitive)
 get_pio_envs_containing_string() {
@@ -93,9 +95,9 @@ get_pio_envs_ending_with_string() {
 # $1 should be the environment name
 get_platform_for_env() {
   local env_name=$1
-  echo "$PIO_CONFIG_JSON" | python3 -c "
+  python3 -c "
 import sys, json, re
-data = json.load(sys.stdin)
+data = json.load($PIO_CONFIG_JSON)
 for section, options in data:
     if section == 'env:$env_name':
         for key, value in options:
@@ -275,4 +277,9 @@ elif [[ $1 == "build-repeater-firmwares" ]]; then
   build_repeater_firmwares
 elif [[ $1 == "build-room-server-firmwares" ]]; then
   build_room_server_firmwares
+fi
+
+# delete temp config json
+if [ -f $PIO_CONFIG_JSON]; then
+  rm $PIO_CONFIG_JSON
 fi
